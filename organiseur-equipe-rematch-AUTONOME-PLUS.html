@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Organiseur d’équipe – Rematch (Pur JS – amélioré)</title>
+  <style>
+    :root {
+      --bg: #111418;
+      --text: #e7e7e7;
+      --card: #1b1f24;
+      --muted: #9aa4af;
+      --grass-a: #1b5e20;
+      --grass-b: #2e7d32;
+      --white: rgba(255,255,255,0.9);
+      --line: rgba(255,255,255,0.8);
+      --blue: #3b82f6;
+      --red: #ef4444;
+      --ring-blue: rgba(59,130,246,0.25);
+      --ring-red: rgba(239,68,68,0.25);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+    }
+    h1 { margin: 0; font-size: 22px; }
+    .toolbar {
+      width: 100%;
+      max-width: 1100px;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1.8fr;
+      gap: 12px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .select, .button, .input {
+      background: #0f1317;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 14px;
+    }
+    .button {
+      background: white;
+      color: #0f1317;
+      font-weight: 600;
+      cursor: pointer;
+      border-color: transparent;
+    }
+    .button.ghost {
+      background: #0f1317;
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.15);
+      font-weight: 500;
+    }
+    .legend-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    .dot-blue { background: var(--blue); }
+    .dot-red { background: var(--red); }
+
+    .field-wrap {
+      width: 100%;
+      max-width: 1100px;
+      height: 62vh;
+      min-height: 420px;
+      border-radius: 22px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.45);
+      background: linear-gradient(135deg, var(--grass-a), var(--grass-b));
+      user-select: none;
+      touch-action: none;
+    }
+    .field-stripes {
+      position: absolute; inset: 0;
+      background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.08), rgba(255,255,255,0.08) 2px, transparent 2px, transparent 24px);
+      opacity: .2;
+      pointer-events: none;
+    }
+    .lines { position: absolute; inset: 0; pointer-events: none; }
+    .border { position: absolute; inset: 8px; border: 4px solid var(--line); border-radius: 4px; }
+    .midline { position: absolute; top: 8px; bottom: 8px; left: 50%; width: 2px; background: var(--line); transform: translateX(-50%); }
+    .center-circle {
+      position: absolute; left: 50%; top: 50%; width: 160px; height: 160px;
+      border: 4px solid var(--line); border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .center-dot {
+      position: absolute; left: 50%; top: 50%; width: 6px; height: 6px;
+      background: var(--white); border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .area { position: absolute; border: 4px solid var(--line); }
+    .goal-mark { position: absolute; width: 8px; height: 56px; background: var(--white); top: 50%; transform: translateY(-50%); }
+    .corner { position: absolute; width: 24px; height: 24px; border: 4px solid var(--line); }
+    .corner.tl { left: 8px; top: 8px; border-right: 0; border-bottom: 0; border-radius: 18px 0 0 0; }
+    .corner.tr { right: 8px; top: 8px; border-left: 0; border-bottom: 0; border-radius: 0 18px 0 0; }
+    .corner.bl { left: 8px; bottom: 8px; border-right: 0; border-top: 0; border-radius: 0 0 0 18px; }
+    .corner.br { right: 8px; bottom: 8px; border-left: 0; border-top: 0; border-radius: 0 0 18px 0; }
+
+    .player {
+      position: absolute;
+      width: 44px; height: 44px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 700; font-size: 13px;
+      cursor: grab;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.35);
+      border: 4px solid transparent;
+      touch-action: none;
+      padding: 0 4px;
+      text-align: center;
+      line-height: 1.1;
+    }
+    .player:active { cursor: grabbing; }
+    .player.blue { background: var(--blue); border-color: var(--ring-blue); }
+    .player.red  { background: var(--red);  border-color: var(--ring-red);  }
+
+    .controls-row {
+      display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end;
+      width: 100%;
+    }
+    .small { font-size: 12px; color: var(--muted); }
+    @media (max-width: 860px) {
+      .toolbar { grid-template-columns: 1fr; }
+      .controls-row { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="card">
+      <strong style="font-size:16px;">Organiseur d’équipe – Rematch</strong>
+    </div>
+    <div class="card">
+      <label for="mode" style="margin-right:8px;color:var(--muted);">Format</label>
+      <select id="mode" class="select">
+        <option value="3v3">3 vs 3</option>
+        <option value="5v5" selected>5 vs 5</option>
+      </select>
+    </div>
+    <div class="card" style="flex-direction: column; align-items: stretch;">
+      <div style="display:flex; align-items:center; justify-content: space-between; gap:10px;">
+        <div><span class="legend-dot dot-blue"></span>Bleu: <span id="blueCount">5</span></div>
+        <div style="opacity:.5;">•</div>
+        <div><span class="legend-dot dot-red"></span>Rouge: <span id="redCount">5</span></div>
+        <button id="reset" class="button" style="width:auto;">Réinitialiser</button>
+      </div>
+      <div class="controls-row" style="margin-top:8px;">
+        <button id="exportBtn" class="button ghost">Exporter JSON</button>
+        <input id="importFile" type="file" accept="application/json" style="display:none"/>
+        <button id="importBtn" class="button ghost">Importer JSON</button>
+        <button id="copyShare" class="button">Copier lien de partage</button>
+        <span class="small" id="shareHint">Le lien encode la compo dans le #hash de l’URL</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="field" class="field-wrap" aria-label="Terrain de football">
+    <div class="field-stripes"></div>
+    <div class="lines">
+      <div class="border"></div>
+      <div class="midline"></div>
+      <div class="center-circle"></div>
+      <div class="center-dot"></div>
+      <div class="area" style="left:8px; top:20%; height:60%; width:112px; border-left:0;"></div>
+      <div class="area" style="left:8px; top:30%; height:40%; width:64px; border-left:0;"></div>
+      <div class="goal-mark" style="left:8px;"></div>
+      <div class="area" style="right:8px; top:20%; height:60%; width:112px; border-right:0;"></div>
+      <div class="area" style="right:8px; top:30%; height:40%; width:64px; border-right:0;"></div>
+      <div class="goal-mark" style="right:8px;"></div>
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+    </div>
+  </div>
+
+  <footer class="small">Astuce : glissez les pions. Double-cliquez pour renommer. Les positions sont sauvegardées localement.</footer>
+
+  <script>
+    (function() {
+      var TEAM_BLUE = "blue";
+      var TEAM_RED = "red";
+      var modeSelect = document.getElementById("mode");
+      var field = document.getElementById("field");
+      var resetBtn = document.getElementById("reset");
+      var blueCountEl = document.getElementById("blueCount");
+      var redCountEl = document.getElementById("redCount");
+      var exportBtn = document.getElementById("exportBtn");
+      var importBtn = document.getElementById("importBtn");
+      var importFile = document.getElementById("importFile");
+      var copyShare = document.getElementById("copyShare");
+
+      var players = [];
+      var dragId = null;
+
+      function initialLayout(mode) {
+        var n = mode === "5v5" ? 5 : 3;
+        var blue = Array.from({ length: n }, function(_, i) {
+          return { id: "B" + (i + 1), label: "B" + (i + 1), team: TEAM_BLUE, x: 20, y: ((i + 1) * 100) / (n + 1) };
+        });
+        var red = Array.from({ length: n }, function(_, i) {
+          return { id: "R" + (i + 1), label: "R" + (i + 1), team: TEAM_RED, x: 80, y: ((i + 1) * 100) / (n + 1) };
+        });
+        return blue.concat(red);
+      }
+
+      function clamp(val, min, max) {
+        return Math.min(Math.max(val, min), max);
+      }
+
+      function save() {
+        try {
+          localStorage.setItem("rematch_mode", modeSelect.value);
+          localStorage.setItem("rematch_players", JSON.stringify(players));
+        } catch (e) {}
+      }
+
+      function load() {
+        try {
+          var fromHash = decodeHashState();
+          if (fromHash) {
+            modeSelect.value = fromHash.mode || "5v5";
+            players = fromHash.players || initialLayout(modeSelect.value);
+            return;
+          }
+          var m = localStorage.getItem("rematch_mode");
+          if (m) modeSelect.value = m;
+          var p = localStorage.getItem("rematch_players");
+          if (p) { players = JSON.parse(p); return; }
+        } catch (e) {}
+        players = initialLayout(modeSelect.value);
+      }
+
+      function renderCounts() {
+        var b = players.filter(function(p){ return p.team === TEAM_BLUE; }).length;
+        var r = players.filter(function(p){ return p.team === TEAM_RED; }).length;
+        blueCountEl.textContent = b;
+        redCountEl.textContent = r;
+      }
+
+      function clearPlayersDom() {
+        var nodes = field.querySelectorAll(".player");
+        for (var i = 0; i < nodes.length; i++) nodes[i].remove();
+      }
+
+      function createPlayerEl(p) {
+        var el = document.createElement("div");
+        el.className = "player " + (p.team === TEAM_BLUE ? "blue" : "red");
+        el.textContent = p.label || p.id;
+        el.style.left = p.x + "%";
+        el.style.top = p.y + "%";
+        el.setAttribute("data-id", p.id);
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", "Joueur " + (p.label || p.id));
+
+        el.addEventListener("pointerdown", function(e) {
+          e.preventDefault();
+          el.setPointerCapture(e.pointerId);
+          dragId = p.id;
+        });
+        el.addEventListener("pointerup", function() { dragId = null; });
+
+        el.addEventListener("dblclick", function() {
+          var name = prompt("Nom/numéro du joueur :", p.label || p.id);
+          if (name && name.trim()) {
+            for (var i=0;i<players.length;i++) if (players[i].id === p.id) players[i].label = name.trim();
+            el.textContent = name.trim();
+            save();
+          }
+        });
+
+        return el;
+      }
+
+      function renderPlayers() {
+        clearPlayersDom();
+        for (var i = 0; i < players.length; i++) field.appendChild(createPlayerEl(players[i]));
+        renderCounts();
+        save();
+      }
+
+      function resetPositions() {
+        players = initialLayout(modeSelect.value);
+        renderPlayers();
+      }
+
+      function onPointerMove(e) {
+        if (!dragId) return;
+        var rect = field.getBoundingClientRect();
+        var cx = (e.clientX !== undefined) ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        var cy = (e.clientY !== undefined) ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+        var xPct = ((cx - rect.left) / rect.width) * 100;
+        var yPct = ((cy - rect.top) / rect.height) * 100;
+        players = players.map(function(p){
+          if (p.id === dragId) {
+            return { id: p.id, label: p.label, team: p.team, x: clamp(xPct, 3, 97), y: clamp(yPct, 3, 97) };
+          }
+          return p;
+        });
+        var el = field.querySelector('.player[data-id="' + dragId + '"]');
+        if (el) {
+          el.style.left = clamp(xPct, 3, 97) + "%";
+          el.style.top = clamp(yPct, 3, 97) + "%";
+        }
+      }
+
+      function download(filename, text) {
+        var a = document.createElement("a");
+        a.setAttribute("href", "data:application/json;charset=utf-8," + encodeURIComponent(text));
+        a.setAttribute("download", filename);
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      function exportJSON() {
+        var data = JSON.stringify({ mode: modeSelect.value, players: players }, null, 2);
+        download("composition-rematch.json", data);
+      }
+
+      function importJSON(file) {
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+          try {
+            var obj = JSON.parse(ev.target.result);
+            if (obj && obj.players && obj.players.length) {
+              modeSelect.value = obj.mode || modeSelect.value;
+              players = obj.players;
+              renderPlayers();
+              alert("Composition importée ✔️");
+            } else {
+              alert("Fichier invalide.");
+            }
+          } catch (e) {
+            alert("Erreur de lecture du JSON.");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function base64urlEncode(str) {
+        try {
+          return btoa(unescape(encodeURIComponent(str))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        } catch (e) {
+          return "";
+        }
+      }
+      function base64urlDecode(str) {
+        try {
+          var pad = str.length % 4 === 2 ? "==" : (str.length % 4 === 3 ? "=" : "");
+          var s = str.replace(/-/g, "+").replace(/_/g, "/") + pad;
+          return decodeURIComponent(escape(atob(s)));
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function makeShareLink() {
+        var state = JSON.stringify({ mode: modeSelect.value, players: players });
+        var enc = base64urlEncode(state);
+        var url = location.origin + location.pathname + "#state=" + enc;
+        return url;
+      }
+
+      function decodeHashState() {
+        if (location.hash && location.hash.indexOf("#state=") === 0) {
+          var enc = location.hash.substring(7);
+          var json = base64urlDecode(enc);
+          try { return JSON.parse(json); } catch(e){ return null; }
+        }
+        return null;
+      }
+
+      function copyToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(function(){ alert("Lien copié dans le presse-papiers ✔️"); });
+        } else {
+          var ta = document.createElement("textarea");
+          ta.value = text; document.body.appendChild(ta); ta.select();
+          try { document.execCommand("copy"); alert("Lien copié ✔️"); } catch (e) {}
+          document.body.removeChild(ta);
+        }
+      }
+
+      field.addEventListener("pointermove", onPointerMove);
+      field.addEventListener("pointerleave", function(){ dragId = null; });
+      window.addEventListener("pointerup", function(){ dragId = null; });
+
+      modeSelect.addEventListener("change", function() {
+        var need = (this.value === "5v5") ? 10 : 6;
+        if (players.length !== need) players = initialLayout(this.value);
+        renderPlayers();
+      });
+      resetBtn.addEventListener("click", resetPositions);
+      exportBtn.addEventListener("click", exportJSON);
+      importBtn.addEventListener("click", function(){ importFile.click(); });
+      importFile.addEventListener("change", function(ev){ if (ev.target.files && ev.target.files[0]) importJSON(ev.target.files[0]); });
+      copyShare.addEventListener("click", function(){ copyToClipboard(makeShareLink()); });
+
+      load();
+      renderPlayers();
+    })();
+  </script>
+</body>
+</html>
