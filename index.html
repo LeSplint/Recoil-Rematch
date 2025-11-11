@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Recoil Rematch – Organiseur (Pro)</title>
+  <style>
+    :root {
+      --bg:#111418; --text:#e7e7e7; --muted:#9aa4af;
+      --grass-a:#1b5e20; --grass-b:#2e7d32;
+      --white:rgba(255,255,255,0.9); --line:rgba(255,255,255,0.8);
+      --blue:#3b82f6; --red:#ef4444;
+      --ring-blue:rgba(59,130,246,0.25); --ring-red:rgba(239,68,68,0.25);
+      --zones:rgba(255,255,255,0.06); --label:rgba(255,255,255,0.55);
+      --card:#0f1317; --border:rgba(255,255,255,.15);
+      --accent:#a78bfa; --accent-2:#22d3ee;
+      --handle:#fbbf24;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+         background:var(--bg);color:var(--text);display:flex;flex-direction:column;align-items:center;gap:14px;padding:14px}
+    .toolbar{width:100%;max-width:1100px;display:grid;grid-template-columns:1.3fr 1.3fr 2.4fr;gap:12px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.08);
+          border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:10px}
+    .select,.button,.input{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:14px}
+    .button{background:#fff;color:#0f1317;font-weight:600;cursor:pointer;border-color:transparent}
+    .button.ghost{background:var(--card);color:var(--text);border:1px solid var(--border);font-weight:500}
+    .legend-dot{width:10px;height:10px;border-radius:50%;display:inline-block;vertical-align:middle;margin-right:6px}
+    .dot-blue{background:var(--blue)} .dot-red{background:var(--red)}
+
+    .field-wrap{width:100%;max-width:1100px;height:72vh;min-height:540px;border-radius:22px;overflow:hidden;position:relative;
+                box-shadow:0 30px 60px rgba(0,0,0,.45);background:linear-gradient(135deg,var(--grass-a),var(--grass-b));touch-action:none}
+    .viewport{position:absolute; inset:0; transform-origin: 0 0; }
+    .field-stripes{position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.08),rgba(255,255,255,.08) 2px,transparent 2px,transparent 24px);
+                   opacity:.25;pointer-events:none}
+    .field-stripes.hidden{display:none}
+    .lines{position:absolute;inset:0;pointer-events:none}
+    .border{position:absolute;inset:8px;border:4px solid var(--line);border-radius:4px}
+    .midline{position:absolute;top:8px;bottom:8px;left:50%;width:2px;background:var(--line);transform:translateX(-50%)}
+    .center-circle{position:absolute;left:50%;top:50%;width:160px;height:160px;border:4px solid var(--line);border-radius:50%;transform:translate(-50%,-50%)}
+    .center-dot{position:absolute;left:50%;top:50%;width:6px;height:6px;background:var(--white);border-radius:50%;transform:translate(-50%,-50%)}
+    .area{position:absolute;border:4px solid var(--line)}
+    .goal-mark{position:absolute;width:8px;height:56px;background:var(--white);top:50%;transform:translateY(-50%)}
+    .corner{position:absolute;width:24px;height:24px;border:4px solid var(--line)}
+    .corner.tl{left:8px;top:8px;border-right:0;border-bottom:0;border-radius:18px 0 0 0}
+    .corner.tr{right:8px;top:8px;border-left:0;border-bottom:0;border-radius:0 18px 0 0}
+    .corner.bl{left:8px;bottom:8px;border-right:0;border-top:0;border-radius:0 0 0 18px}
+    .corner.br{right:8px;bottom:8px;border-left:0;border-top:0;border-radius:0 0 18px 0}
+    .zones{position:absolute;inset:8px;pointer-events:none;display:grid;grid-template-columns:12% 26% 24% 26% 12%}
+    .zone{background:var(--zones);border-left:1px dashed rgba(255,255,255,.12);border-right:1px dashed rgba(255,255,255,.12);position:relative}
+    .zone:first-child,.zone:last-child{background:transparent;border:none}
+    .zone-label{position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:12px;letter-spacing:1px;color:var(--label);font-weight:700}
+
+    .player{position:absolute;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:50%;display:flex;align-items:center;justify-content:center;
+            color:#fff;font-weight:700;font-size:13px;cursor:grab;box-shadow:0 12px 24px rgba(0,0,0,.35);border:4px solid transparent;touch-action:none;
+            padding:0 4px;text-align:center;line-height:1.1;user-select:none}
+    .player:active{cursor:grabbing} .player.blue{background:var(--blue);border-color:var(--ring-blue)} .player.red{background:var(--red);border-color:var(--ring-red)}
+
+    .ball{position:absolute;width:36px;height:36px;transform:translate(-50%,-50%);border-radius:50%;
+          display:flex;align-items:center;justify-content:center;
+          font-size:22px;cursor:grab;user-select:none;filter: drop-shadow(0 8px 16px rgba(0,0,0,.35));}
+    .ball:active{cursor:grabbing}
+
+    .overlay { position:absolute; inset:0; pointer-events:none; }
+    .overlay svg { width:100%; height:100%; display:block; }
+    .overlay .layer { pointer-events: none; }
+    .overlay .arrow { pointer-events: auto; cursor: pointer; }
+    .selected { filter: drop-shadow(0 0 0.4rem rgba(255,255,255,.55)); }
+    .label { font-size: 13px; font-weight: 700; fill: white; paint-order: stroke; stroke: rgba(0,0,0,.4); stroke-width: 3px; }
+
+    /* arrow handles */
+    .handle { fill: var(--handle); stroke: rgba(0,0,0,.5); stroke-width: 2px; cursor: grab; }
+    .handle:active { cursor: grabbing; }
+    .locked line { opacity:.55 } .locked .handle { opacity:.0; pointer-events:none }
+
+    .small{font-size:12px;color:var(--muted)}
+    @media (max-width:860px){.toolbar{grid-template-columns:1fr}}
+
+    .ctx { position: fixed; z-index: 50; min-width: 180px; background: #11161b; color: var(--text);
+           border:1px solid rgba(255,255,255,.1); border-radius:12px; box-shadow:0 18px 40px rgba(0,0,0,.4); padding:6px; display:none; }
+    .ctx-btn { display:flex; align-items:center; gap:8px; width:100%; border:0; background:transparent; color:inherit; padding:10px 12px; border-radius:8px; cursor:pointer; }
+    .ctx-btn:hover { background: rgba(255,255,255,.06); }
+    .sep { height:1px; background: rgba(255,255,255,.08); margin:6px 0; }
+
+    .zoom-controls{position:absolute; right:10px; bottom:10px; display:flex; flex-direction:column; gap:8px; z-index:5;}
+    .zoom-controls .button{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0}
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="card" style="gap:12px;flex-wrap:wrap">
+      <strong style="font-size:16px;">Recoil Rematch – Organiseur Pro</strong>
+      <button id="presetAtk" class="button ghost">Preset Attaque</button>
+      <button id="presetDef" class="button ghost">Preset Défense</button>
+      <button id="presetCor" class="button ghost">Preset Corner</button>
+      <label class="check" style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="snap">Snap zones
+      </label>
+    </div>
+    <div class="card">
+      <label for="mode" style="margin-right:8px;color:var(--muted);">Format</label>
+      <select id="mode" class="select">
+        <option value="3v3">3 vs 3</option>
+        <option value="5v5" selected>5 vs 5</option>
+      </select>
+      <div style="margin-left:auto;display:flex;gap:8px">
+        <div><span class="legend-dot dot-blue"></span>Bleu: <span id="blueCount">5</span></div>
+        <div style="opacity:.5">•</div>
+        <div><span class="legend-dot dot-red"></span>Rouge: <span id="redCount">5</span></div>
+      </div>
+    </div>
+    <div class="card" style="flex-direction:column;align-items:stretch;gap:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        <button id="reset" class="button">Réinitialiser</button>
+        <button id="exportBtn" class="button ghost">Exporter JSON</button>
+        <input id="importFile" type="file" accept="application/json" style="display:none"/>
+        <button id="importBtn" class="button ghost">Importer JSON</button>
+        <button id="exportPng" class="button">Export PNG</button>
+        <button id="copyShare" class="button">Copier lien</button>
+      </div>
+      <div class="small">📱 Pincer pour zoomer, deux doigts pour déplacer • Raccourcis : Z/X (zoom), G (grille), L (verrouille flèche), D (duplique flèche), Suppr (supprime)</div>
+    </div>
+  </header>
+
+  <!-- Arrow tools -->
+  <div class="card" style="width:100%;max-width:1100px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span class="badge">Flèches & annotations</span>
+    <label><input type="radio" name="mode" value="move" checked> Déplacer</label>
+    <label><input type="radio" name="mode" value="draw"> Dessiner une flèche</label>
+    <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="dashed">Pointillée</label>
+    <label>Épaisseur <input type="range" id="width" min="2" max="10" value="4" style="width:140px"></label>
+    <label>Couleur <input type="color" id="color" value="#ffffff" style="width:42px;height:36px;border-radius:10px;border:1px solid var(--border);background:var(--card)"></label>
+    <label>Label <input type="text" id="lbl" class="input" placeholder="Texte au-dessus de la flèche" style="min-width:200px"/></label>
+    <label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="autoNum">Numérotation auto</label>
+    <button id="clearArrows" class="button ghost">Effacer les flèches</button>
+  </div>
+
+  <div id="field" class="field-wrap" aria-label="Terrain">
+    <div id="viewport" class="viewport">
+      <div id="stripes" class="field-stripes"></div>
+      <div class="lines">
+        <div class="border"></div><div class="midline"></div>
+        <div class="center-circle"></div><div class="center-dot"></div>
+        <div class="area" style="left:8px; top:20%; height:60%; width:112px; border-left:0"></div>
+        <div class="area" style="left:8px; top:30%; height:40%; width:64px; border-left:0"></div>
+        <div class="goal-mark" style="left:8px"></div>
+        <div class="area" style="right:8px; top:20%; height:60%; width:112px; border-right:0"></div>
+        <div class="area" style="right:8px; top:30%; height:40%; width:64px; border-right:0"></div>
+        <div class="goal-mark" style="right:8px"></div>
+        <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+      </div>
+      <div class="zones">
+        <div class="zone"><span class="zone-label">GK</span></div>
+        <div class="zone"><span class="zone-label">DEF</span></div>
+        <div class="zone"><span class="zone-label">MID</span></div>
+        <div class="zone"><span class="zone-label">ATT</span></div>
+        <div class="zone"><span class="zone-label">GK</span></div>
+      </div>
+      <div class="overlay">
+        <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowHead" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+              <polygon points="0 0, 10 5, 0 10" fill="currentColor"></polygon>
+            </marker>
+          </defs>
+          <g id="arrowsLayer" class="layer"></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Context menu -->
+    <div id="ctx" class="ctx" role="menu" aria-hidden="true">
+      <button id="ctxRename" class="ctx-btn">✏️ Renommer</button>
+      <button id="ctxDuplicate" class="ctx-btn">➕ Dupliquer</button>
+      <div class="sep"></div>
+      <button id="ctxDelete" class="ctx-btn">🗑️ Supprimer</button>
+    </div>
+
+    <!-- Zoom controls -->
+    <div class="zoom-controls">
+      <button id="zoomIn" class="button">+</button>
+      <button id="zoomOut" class="button">−</button>
+      <button id="zoomReset" class="button ghost">⟲</button>
+    </div>
+  </div>
+
+  <details class="card" style="max-width:1100px;width:100%">
+    <summary><strong>Pour aller plus loin… (activé)</strong></summary>
+    <ul>
+      <li>Poignées sur flèches (extrémités) pour ajuster &rarr; <em>clic sur flèche pour sélectionner puis drag les petits ronds</em>.</li>
+      <li>Verrouillage de flèche (L) pour éviter toute modification accidentelle. Duplication avec (D).</li>
+      <li>Numérotation auto pour les labels (si champ vide).</li>
+      <li>Export PNG (bouton « Export PNG »).</li>
+      <li>Presets : Attaque, Défense, Corner.</li>
+      <li>Snap to zones (cocher « Snap zones ») : aligne joueurs, balle et extrémités des flèches aux colonnes GK/DEF/MID/ATT (tolérance).</li>
+      <li>Raccourcis : Z/X (zoom), G (grille on/off), L (lock flèche), D (dupliquer flèche), Suppr (supprimer flèche).</li>
+    </ul>
+  </details>
+
+  <footer class="small">
+    Site : <a href="https://lesplint.github.io/Recoil-Rematch" target="_blank" style="color:#9aa4af;text-decoration:none;">https://lesplint.github.io/Recoil-Rematch</a>
+    — <a href="https://github.com/lesplint/Recoil-Rematch/blob/main/README.md" target="_blank" style="color:#9aa4af;text-decoration:none;">📘 README</a>
+  </footer>
+
+  <script>
+    (function(){
+      var PUBLIC_URL = "https://lesplint.github.io/Recoil-Rematch";
+
+      var TEAM_BLUE="blue", TEAM_RED="red";
+      var modeSelect=document.getElementById("mode"), field=document.getElementById("field");
+      var viewport=document.getElementById("viewport");
+      var stripes=document.getElementById("stripes");
+      var resetBtn=document.getElementById("reset");
+      var blueCountEl=document.getElementById("blueCount"), redCountEl=document.getElementById("redCount");
+      var exportBtn=document.getElementById("exportBtn"), importBtn=document.getElementById("importBtn"), importFile=document.getElementById("importFile");
+      var exportPng=document.getElementById("exportPng");
+      var copyShare=document.getElementById("copyShare");
+
+      var ctx=document.getElementById("ctx"), ctxRename=document.getElementById("ctxRename"), ctxDuplicate=document.getElementById("ctxDuplicate"), ctxDelete=document.getElementById("ctxDelete");
+
+      var modeRadios = document.querySelectorAll("input[name='mode']");
+      var dashed = document.getElementById("dashed");
+      var widthRange = document.getElementById("width");
+      var colorPicker = document.getElementById("color");
+      var lblInput = document.getElementById("lbl");
+      var clearArrows = document.getElementById("clearArrows");
+      var autoNum = document.getElementById("autoNum");
+      var snapChk = document.getElementById("snap");
+
+      var svg = document.getElementById("svg");
+      var arrowsLayer = document.getElementById("arrowsLayer");
+
+      var players=[], ball=null, arrows=[];
+      var clickTimes = {}; var dragThresholdPx = 4;
+      var selectedArrowId = null;
+
+      // View transform state
+      var scale = 1, minScale=0.8, maxScale=3;
+      var tx = 0, ty = 0;
+      function applyTransform(){ viewport.style.transform = "translate("+tx+"px,"+ty+"px) scale("+scale+")"; }
+      function resetView(){ scale=1; tx=0; ty=0; applyTransform(); }
+
+      function currentMode(){ for(var i=0;i<modeRadios.length;i++){ if(modeRadios[i].checked) return modeRadios[i].value; } return 'move'; }
+      function clamp(v,min,max){ return Math.min(Math.max(v,min),max); }
+      function initialLayout(mode){
+        var n = mode==="5v5" ? 5 : 3;
+        var blue = Array.from({length:n}, function(_,i){ return {id:"B"+(i+1), label:"B"+(i+1), team:TEAM_BLUE, x:20, y:((i+1)*100)/(n+1)}; });
+        var red  = Array.from({length:n}, function(_,i){ return {id:"R"+(i+1), label:"R"+(i+1), team:TEAM_RED,  x:80, y:((i+1)*100)/(n+1)}; });
+        return blue.concat(red);
+      }
+      function initialBall(){ return { id:"BALL", x:50, y:50 }; }
+      function uuid(){ return Math.random().toString(36).slice(2,9); }
+
+      function clientToPct(clientX, clientY){
+        var rect = field.getBoundingClientRect();
+        var localX = (clientX - rect.left - tx) / scale;
+        var localY = (clientY - rect.top - ty) / scale;
+        var xPct = (localX / rect.width) * 100;
+        var yPct = (localY / rect.height) * 100;
+        return { x: clamp(xPct, 0, 100), y: clamp(yPct, 0, 100) };
+      }
+
+      function base64urlEncode(str){ try{ return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""); }catch(e){ return ""; } }
+      function base64urlDecode(str){
+        try{ var pad = str.length%4===2 ? "==" : (str.length%4===3 ? "=" : ""); var s = str.replace(/-/g,"+").replace(/_/g,"/")+pad; return decodeURIComponent(escape(atob(s))); }catch(e){ return ""; }
+      }
+      function makeShareLink(){
+        var state = JSON.stringify({mode:modeSelect.value, players:players, ball:ball, arrows:arrows});
+        var enc = base64urlEncode(state);
+        return PUBLIC_URL + "#state=" + enc;
+      }
+      function decodeHashState(){
+        if(location.hash && location.hash.indexOf("#state=")===0){
+          var enc = location.hash.substring(7);
+          var json = base64urlDecode(enc);
+          try{ return JSON.parse(json); }catch(e){ return null; }
+        }
+        return null;
+      }
+
+      function save(){
+        try{
+          localStorage.setItem("rematch_mode", modeSelect.value);
+          localStorage.setItem("rematch_players", JSON.stringify(players));
+          localStorage.setItem("rematch_ball", JSON.stringify(ball));
+          localStorage.setItem("rematch_arrows", JSON.stringify(arrows));
+          history.replaceState(null,"", makeShareLink());
+        }catch(e){}
+        renderCounts();
+      }
+      function load(){
+        try{
+          var fromHash = decodeHashState();
+          if(fromHash){
+            modeSelect.value = fromHash.mode || "5v5";
+            players = fromHash.players || initialLayout(modeSelect.value);
+            ball = fromHash.ball || initialBall();
+            arrows = fromHash.arrows || [];
+            return;
+          }
+          var m=localStorage.getItem("rematch_mode"); if(m) modeSelect.value=m;
+          var p=localStorage.getItem("rematch_players"); players = p? JSON.parse(p) : initialLayout(modeSelect.value);
+          var b=localStorage.getItem("rematch_ball"); ball = b? JSON.parse(b) : initialBall();
+          var a=localStorage.getItem("rematch_arrows"); arrows = a? JSON.parse(a) : [];
+        }catch(e){
+          players = initialLayout(modeSelect.value); ball=initialBall(); arrows=[];
+        }
+      }
+
+      function renderCounts(){
+        var bl=players.filter(function(p){return p.team==='blue'}).length;
+        var rd=players.filter(function(p){return p.team==='red'}).length;
+        blueCountEl.textContent=bl; redCountEl.textContent=rd;
+      }
+
+      // Snap to zone centers (x only), tolerance 3%
+      var zoneCenters = [6, 25, 50, 75, 94]; // approximate GK/DEF/MID/ATT/GK centers
+      function snapPoint(pct){
+        if(!snapChk.checked) return pct;
+        var tol=3, bestX=pct.x, bestDist=999;
+        for(var i=0;i<zoneCenters.length;i++){
+          var d=Math.abs(pct.x-zoneCenters[i]);
+          if(d<bestDist && d<=tol){ bestDist=d; bestX=zoneCenters[i]; }
+        }
+        return { x:bestX, y:pct.y };
+      }
+
+      // Context menu players
+      document.addEventListener("contextmenu", function(e){ e.preventDefault(); });
+      var ctxTargetId=null;
+      function openMenuFor(p, el, x, y){
+        ctxTargetId = p.id;
+        ctx.style.left = Math.min(x, window.innerWidth - 200) + "px";
+        ctx.style.top  = Math.min(y, window.innerHeight - 160) + "px";
+        ctx.style.display = "block";
+        ctx.setAttribute("aria-hidden","false");
+      }
+      function closeMenu(){ ctxTargetId=null; ctx.style.display="none"; ctx.setAttribute("aria-hidden","true"); }
+      document.addEventListener("pointerdown", function(e){ if(!ctx.contains(e.target)) closeMenu(); });
+
+      function promptRename(p, el){
+        var name = prompt("Nom/numéro du joueur :", p.label || p.id);
+        if(name && name.trim()){
+          p.label = name.trim();
+          el.textContent = p.label;
+          save();
+        }
+      }
+      function nextId(team){
+        var prefix = team===TEAM_BLUE ? "B" : "R", max = 0;
+        players.forEach(function(pp){ if(pp.team===team){ var num=parseInt((pp.id||"").replace(/\D/g,""),10); if(!isNaN(num)) max=Math.max(max,num); } });
+        return prefix+(max+1);
+      }
+      function teamLimit(team){
+        var limit = (modeSelect.value==="5v5") ? 5 : 3;
+        var count = players.filter(function(p){return p.team===team}).length;
+        return {limit:limit, count:count, ok: count < limit};
+      }
+      ctxRename.addEventListener("click", function(){
+        var el = viewport.querySelector('.player[data-id="'+ctxTargetId+'"]');
+        var p = players.find(function(pp){return pp.id===ctxTargetId});
+        if(p && el) promptRename(p, el);
+        closeMenu();
+      });
+      ctxDuplicate.addEventListener("click", function(){
+        var p = players.find(function(pp){return pp.id===ctxTargetId});
+        if(!p) return;
+        var lim = teamLimit(p.team);
+        if(!lim.ok){ alert("Équipe complète ("+lim.limit+")."); return; }
+        var id = nextId(p.team);
+        players.push({ id:id, label:id, team:p.team, x:clamp(p.x+3,3,97), y:clamp(p.y+3,3,97) });
+        renderAll();
+        closeMenu();
+      });
+      ctxDelete.addEventListener("click", function(){
+        players = players.filter(function(pp){ return pp.id !== ctxTargetId; });
+        renderAll(); closeMenu();
+      });
+
+      // Actors
+      function clearActors(){ var nodes=viewport.querySelectorAll(".player, .ball"); for(var i=0;i<nodes.length;i++) nodes[i].remove(); }
+      function createPlayerEl(p){
+        var el=document.createElement("div");
+        el.className="player " + (p.team==='blue'?'blue':'red');
+        el.textContent=p.label||p.id;
+        el.style.left=p.x+'%'; el.style.top=p.y+'%';
+        el.setAttribute('data-id', p.id);
+        var localDrag=false, start=null;
+        el.addEventListener("pointerdown", function(e){
+          if(currentMode()==='draw') return;
+          e.preventDefault();
+          localDrag=false; start={x:e.clientX,y:e.clientY};
+          function move(ev){
+            var dx=Math.abs(ev.clientX-start.x), dy=Math.abs(ev.clientY-start.y);
+            if(dx>dragThresholdPx || dy>dragThresholdPx) localDrag=true;
+            var pct = snapPoint(clientToPct(ev.clientX, ev.clientY));
+            p.x = clamp(pct.x, 3, 97); p.y = clamp(pct.y, 3, 97);
+            el.style.left=p.x+'%'; el.style.top=p.y+'%';
+          }
+          function up(ev){
+            viewport.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", up);
+            if(!localDrag){
+              var now=Date.now(), last=clickTimes[p.id]||0; clickTimes[p.id]=now;
+              if(now-last<300){ promptRename(p, el); clickTimes[p.id]=0; }
+            } else save();
+          }
+          viewport.addEventListener("pointermove", move);
+          window.addEventListener("pointerup", up);
+        });
+        el.addEventListener("dblclick", function(){ promptRename(p, el); });
+        el.addEventListener("contextmenu", function(ev){ ev.preventDefault(); openMenuFor(p, el, ev.clientX, ev.clientY); });
+        return el;
+      }
+      function createBallEl(){
+        var el=document.createElement("div");
+        el.className="ball"; el.textContent="⚽️";
+        el.style.left=ball.x+'%'; el.style.top=ball.y+'%';
+        el.addEventListener("pointerdown", function(e){
+          if(currentMode()==='draw') return;
+          e.preventDefault();
+          function move(ev){
+            var pct = snapPoint(clientToPct(ev.clientX, ev.clientY));
+            ball.x = clamp(pct.x, 3, 97); ball.y = clamp(pct.y, 3, 97);
+            el.style.left=ball.x+'%'; el.style.top=ball.y+'%';
+          }
+          function up(){ viewport.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); save(); }
+          viewport.addEventListener("pointermove", move);
+          window.addEventListener("pointerup", up);
+        });
+        return el;
+      }
+      function renderActors(){
+        clearActors();
+        players.forEach(function(p){ viewport.appendChild(createPlayerEl(p)); });
+        viewport.appendChild(createBallEl());
+      }
+
+      // Arrows with handles
+      function clearArrowsLayer(){ while(arrowsLayer.firstChild) arrowsLayer.removeChild(arrowsLayer.firstChild); }
+      function lineStyle(a){ var dash = a.dashed ? "6,6" : "none"; return { stroke:a.color, "stroke-width":a.width, "stroke-dasharray":dash }; }
+      function renderArrows(){
+        clearArrowsLayer();
+        var numbering=0;
+        arrows.forEach(function(a, idx){
+          var g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+          g.setAttribute("data-id", a.id);
+          g.classList.add("arrow");
+          if (a.locked) g.classList.add("locked");
+          if (a.id === selectedArrowId) g.classList.add("selected");
+
+          var line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.setAttribute("x1", a.x1+"%"); line.setAttribute("y1", a.y1+"%");
+          line.setAttribute("x2", a.x2+"%"); line.setAttribute("y2", a.y2+"%");
+          var st=lineStyle(a); for(var k in st) line.setAttribute(k, st[k]);
+          line.setAttribute("marker-end", "url(#arrowHead)");
+          line.style.color = a.color;
+          g.appendChild(line);
+
+          var labelText = (a.label || "").trim();
+          if (!labelText && document.getElementById("autoNum").checked) { numbering++; labelText = String(numbering); }
+          if (labelText){
+            var midx = (a.x1 + a.x2)/2;
+            var midy = (a.y1 + a.y2)/2 - 2;
+            var text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            text.setAttribute("x", midx+"%"); text.setAttribute("y", midy+"%");
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("class", "label");
+            text.textContent = labelText;
+            g.appendChild(text);
+          }
+
+          // handles if selected and not locked
+          if (a.id === selectedArrowId && !a.locked){
+            var h1 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            h1.setAttribute("cx", a.x1+"%"); h1.setAttribute("cy", a.y1+"%"); h1.setAttribute("r", 8);
+            h1.setAttribute("class", "handle");
+            var h2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            h2.setAttribute("cx", a.x2+"%"); h2.setAttribute("cy", a.y2+"%"); h2.setAttribute("r", 8);
+            h2.setAttribute("class", "handle");
+            g.appendChild(h1); g.appendChild(h2);
+
+            function dragHandle(which, ev){
+              var pct = snapPoint(clientToPct(ev.clientX, ev.clientY));
+              if(which===1){ a.x1=pct.x; a.y1=pct.y; } else { a.x2=pct.x; a.y2=pct.y; }
+              renderArrows(); save();
+            }
+            function bindHandle(circle, which){
+              var moving=false;
+              circle.addEventListener("pointerdown", function(e){
+                e.preventDefault(); moving=true;
+                function move(ev){ if(moving){ dragHandle(which, ev); } }
+                function up(){ moving=false; svg.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); }
+                svg.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+              });
+            }
+            bindHandle(h1,1); bindHandle(h2,2);
+          }
+
+          g.addEventListener("click", function(ev){ selectedArrowId=a.id; renderArrows(); ev.stopPropagation(); });
+          arrowsLayer.appendChild(g);
+        });
+      }
+
+      var drawStart=null;
+      field.addEventListener("pointerdown", function(e){
+        if(currentMode()!=="draw") return;
+        var p = snapPoint(clientToPct(e.clientX, e.clientY));
+        drawStart = p;
+      });
+      field.addEventListener("pointerup", function(e){
+        if(currentMode()!=="draw" || !drawStart) return;
+        var end = snapPoint(clientToPct(e.clientX, e.clientY));
+        var a = { id: uuid(), x1: drawStart.x, y1: drawStart.y, x2: end.x, y2: end.y,
+                  color: colorPicker.value || "#ffffff", width: parseInt(widthRange.value,10) || 4,
+                  dashed: dashed.checked, label: (lblInput.value||"").trim(), locked:false };
+        arrows.push(a); drawStart=null; selectedArrowId=a.id; renderArrows(); save();
+      });
+      field.addEventListener("click", function(e){
+        if (currentMode() === "draw") return;
+        if (e.target.closest(".arrow")) return;
+        selectedArrowId = null; renderArrows();
+      });
+
+      // Keyboard shortcuts
+      window.addEventListener("keydown", function(e){
+        if(e.key==='g' || e.key==='G'){ stripes.classList.toggle("hidden"); }
+        if(e.key==='z' || e.key==='Z'){ var r=field.getBoundingClientRect(); zoomAt(1.1, r.left+r.width/2, r.top+r.height/2); }
+        if(e.key==='x' || e.key==='X'){ var r=field.getBoundingClientRect(); zoomAt(1/1.1, r.left+r.width/2, r.top+r.height/2); }
+        if((e.key==='Delete' || e.key==='Backspace') && selectedArrowId){
+          arrows = arrows.filter(function(a){ return a.id !== selectedArrowId; });
+          selectedArrowId = null; renderArrows(); save();
+        }
+        if((e.key==='l' || e.key==='L') && selectedArrowId){
+          var a = arrows.find(function(t){ return t.id===selectedArrowId; }); if(a){ a.locked=!a.locked; renderArrows(); save(); }
+        }
+        if((e.key==='d' || e.key==='D') && selectedArrowId){
+          var a = arrows.find(function(t){ return t.id===selectedArrowId; });
+          if(a){ var b=JSON.parse(JSON.stringify(a)); b.id=uuid(); b.x1=clamp(a.x1+2,0,100); b.y1=a.y1; b.x2=clamp(a.x2+2,0,100); b.y2=a.y2; arrows.push(b); selectedArrowId=b.id; renderArrows(); save(); }
+        }
+      });
+
+      // Zoom controls
+      function applyTransform(){ viewport.style.transform = "translate("+tx+"px,"+ty+"px) scale("+scale+")"; }
+      function zoomAt(factor, clientX, clientY){
+        var rect = field.getBoundingClientRect();
+        var newScale = clamp(scale*factor, minScale, maxScale);
+        var sFactor = newScale/scale;
+        tx = (clientX - rect.left) - sFactor * ((clientX - rect.left) - tx);
+        ty = (clientY - rect.top)  - sFactor * ((clientY - rect.top) - ty);
+        scale = newScale;
+        applyTransform();
+      }
+      document.getElementById("zoomIn").addEventListener("click", function(){
+        var r=field.getBoundingClientRect(); zoomAt(1.2, r.left+r.width/2, r.top+r.height/2);
+      });
+      document.getElementById("zoomOut").addEventListener("click", function(){
+        var r=field.getBoundingClientRect(); zoomAt(1/1.2, r.left+r.width/2, r.top+r.height/2);
+      });
+      document.getElementById("zoomReset").addEventListener("click", function(){ resetView(); });
+
+      field.addEventListener("wheel", function(e){
+        if (!e.ctrlKey && Math.abs(e.deltaY) < 40) return;
+        e.preventDefault();
+        var factor = e.deltaY < 0 ? 1.1 : 1/1.1;
+        zoomAt(factor, e.clientX, e.clientY);
+      }, { passive:false });
+
+      // Two-finger pinch & pan
+      var pointers = new Map();
+      field.addEventListener("pointerdown", function(e){
+        pointers.set(e.pointerId, e);
+        if (pointers.size===2){ gestureInit(); }
+      });
+      field.addEventListener("pointermove", function(e){
+        if(!pointers.has(e.pointerId)) return;
+        pointers.set(e.pointerId, e);
+        if (pointers.size===2){ gestureUpdate(); }
+      });
+      function removePointer(e){ pointers.delete(e.pointerId); }
+      field.addEventListener("pointerup", removePointer);
+      field.addEventListener("pointercancel", removePointer);
+      field.addEventListener("pointerleave", removePointer);
+
+      var gStart = null;
+      function getTwoPointers(){ var a=[...pointers.values()]; return a.length>=2 ? [a[0], a[1]] : null; }
+      function dist(a,b){ var dx=a.clientX-b.clientX, dy=a.clientY-b.clientY; return Math.hypot(dx,dy); }
+      function mid(a,b){ return { x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2 }; }
+      function gestureInit(){
+        var pp = getTwoPointers(); if(!pp) return;
+        gStart = { scale: scale, tx: tx, ty: ty, d: dist(pp[0], pp[1]), mid: mid(pp[0], pp[1]) };
+      }
+      function gestureUpdate(){
+        var pp = getTwoPointers(); if(!pp || !gStart) return;
+        var dNow = dist(pp[0], pp[1]);
+        var mNow = mid(pp[0], pp[1]);
+        var rect = field.getBoundingClientRect();
+        var newScale = clamp(gStart.scale * (dNow / gStart.d), minScale, maxScale);
+        scale = newScale;
+        tx = (mNow.x - rect.left) - (scale/gStart.scale) * ( (gStart.mid.x - rect.left) - gStart.tx );
+        ty = (mNow.y - rect.top)  - (scale/gStart.scale) * ( (gStart.mid.y - rect.top) - gStart.ty );
+        applyTransform();
+      }
+
+      // Import/Export JSON
+      function download(filename,text){
+        var a=document.createElement("a");
+        a.setAttribute("href","data:application/json;charset=utf-8,"+encodeURIComponent(text));
+        a.setAttribute("download",filename); a.style.display="none"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+      function exportJSON(){
+        var data=JSON.stringify({mode:modeSelect.value, players:players, ball:ball, arrows:arrows}, null, 2);
+        download("composition-rematch.json", data);
+      }
+      function importJSON(file){
+        var reader=new FileReader();
+        reader.onload=function(ev){
+          try{
+            var obj=JSON.parse(ev.target.result);
+            if(obj && obj.players && obj.players.length){
+              modeSelect.value=obj.mode||modeSelect.value; players=obj.players;
+              ball=obj.ball || {id:"BALL",x:50,y:50};
+              arrows=obj.arrows || [];
+              renderAll(); alert("Composition importée ✔️");
+            }else{ alert("Fichier invalide."); }
+          }catch(e){ alert("Erreur de lecture du JSON."); }
+        };
+        reader.readAsText(file);
+      }
+      function copyToClipboard(text){
+        if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(function(){ alert("Lien copié ✔️"); }); }
+        else{ var ta=document.createElement("textarea"); ta.value=text; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); alert("Lien copié ✔️"); }catch(e){} document.body.removeChild(ta); }
+      }
+
+      // Export PNG (custom canvas render)
+      function exportPNG(){
+        var rect = field.getBoundingClientRect();
+        var W = Math.round(rect.width * 2), H = Math.round(rect.height * 2); // 2x for retina
+        var cv = document.createElement("canvas"); cv.width=W; cv.height=H;
+        var ctx = cv.getContext("2d");
+
+        // background grass
+        var grad = ctx.createLinearGradient(0,0,W,H);
+        grad.addColorStop(0,"#1b5e20"); grad.addColorStop(1,"#2e7d32");
+        ctx.fillStyle=grad; ctx.fillRect(0,0,W,H);
+
+        // stripes
+        if(!stripes.classList.contains("hidden")){
+          ctx.globalAlpha=0.2; ctx.fillStyle="rgba(255,255,255,0.08)";
+          for(var y=0;y<H;y+=24*2){ ctx.fillRect(0,y, W, 2); }
+          ctx.globalAlpha=1;
+        }
+
+        // helper to convert % coords to px
+        function pxX(pct){ return (pct/100)*W; }
+        function pxY(pct){ return (pct/100)*H; }
+
+        // field lines
+        ctx.strokeStyle="rgba(255,255,255,0.8)"; ctx.lineWidth=8; ctx.strokeRect(16,16,W-32,H-32);
+        ctx.lineWidth=4;
+        ctx.beginPath(); ctx.moveTo(W/2,16); ctx.lineTo(W/2,H-16); ctx.stroke();
+        ctx.beginPath(); ctx.arc(W/2,H/2,80,0,Math.PI*2); ctx.stroke();
+        ctx.fillStyle="rgba(255,255,255,0.9)"; ctx.beginPath(); ctx.arc(W/2,H/2,3,0,Math.PI*2); ctx.fill();
+
+        // penalty boxes approx
+        function box(left){ ctx.strokeRect(left?16:W-16-224, H*0.2, 224, H*0.6); ctx.strokeRect(left?16:W-16-128, H*0.3, 128, H*0.4); }
+        box(true); box(false);
+
+        // players
+        players.forEach(function(p){
+          var x=pxX(p.x), y=pxY(p.y);
+          ctx.fillStyle = p.team==='blue' ? "#3b82f6" : "#ef4444";
+          ctx.strokeStyle = p.team==='blue' ? "rgba(59,130,246,.25)" : "rgba(239,68,68,.25)";
+          ctx.lineWidth=8; ctx.beginPath(); ctx.arc(x,y,23,0,Math.PI*2); ctx.fill(); ctx.stroke();
+          ctx.fillStyle="#fff"; ctx.font="700 24px system-ui, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+          ctx.fillText(p.label||p.id, x, y);
+        });
+
+        // ball
+        ctx.font="28px system-ui, Apple Color Emoji, Segoe UI Emoji"; ctx.textAlign="center"; ctx.textBaseline="middle";
+        ctx.fillText("⚽️", pxX(ball.x), pxY(ball.y));
+
+        // arrows
+        arrows.forEach(function(a, i){
+          var color=a.color||"#fff"; var width=(a.width||4)*2; // 2x scale
+          ctx.strokeStyle=color; ctx.lineWidth=width; ctx.setLineDash(a.dashed?[12,12]:[]);
+          ctx.beginPath(); ctx.moveTo(pxX(a.x1), pxY(a.y1)); ctx.lineTo(pxX(a.x2), pxY(a.y2)); ctx.stroke();
+          // arrow head
+          var ang=Math.atan2(pxY(a.y2)-pxY(a.y1), pxX(a.x2)-pxX(a.x1));
+          var head=12+width; var hx=pxX(a.x2), hy=pxY(a.y2);
+          ctx.beginPath();
+          ctx.moveTo(hx,hy);
+          ctx.lineTo(hx - head*Math.cos(ang - Math.PI/6), hy - head*Math.sin(ang - Math.PI/6));
+          ctx.moveTo(hx,hy);
+          ctx.lineTo(hx - head*Math.cos(ang + Math.PI/6), hy - head*Math.sin(ang + Math.PI/6));
+          ctx.stroke();
+          ctx.setLineDash([]);
+          // label / numbering
+          var label=(a.label||"").trim();
+          if(!label && autoNum.checked) label=String(i+1);
+          if(label){
+            ctx.fillStyle="#fff"; ctx.strokeStyle="rgba(0,0,0,.4)";
+            ctx.lineWidth=6; ctx.font="700 22px system-ui, sans-serif";
+            var mx=(pxX(a.x1)+pxX(a.x2))/2, my=(pxY(a.y1)+pxY(a.y2))/2 - 10;
+            ctx.strokeText(label,mx,my); ctx.fillText(label,mx,my);
+          }
+        });
+
+        // save
+        var url=cv.toDataURL("image/png");
+        var a=document.createElement("a"); a.href=url; a.download="rematch-compo.png"; document.body.appendChild(a); a.click(); a.remove();
+      }
+
+      // Presets (simple distributions)
+      function applyPreset(name){
+        var n = modeSelect.value==="5v5" ? 5 : 3;
+        function line(x, team){ return Array.from({length:n}, function(_,i){ return {id:(team==='blue'?'B':'R')+(i+1), label:(team==='blue'?'B':'R')+(i+1), team:team, x:x, y: ((i+1)*100)/(n+1)}; }); }
+        if(name==='atk'){
+          players = line(35,'blue').concat(line(65,'red'));
+        }else if(name==='def'){
+          players = line(20,'blue').concat(line(80,'red'));
+        }else if(name==='cor'){
+          // corner: bleus regroupés côté gauche, rouges défendent
+          players = Array.from({length:n}, function(_,i){ return {id:'B'+(i+1), label:'B'+(i+1), team:'blue', x:12+ i*(8), y: 30 + i*(40/(n-1))}; })
+                    .concat(Array.from({length:n}, function(_,i){ return {id:'R'+(i+1), label:'R'+(i+1), team:'red', x:85 - i*(5), y: 30 + i*(40/(n-1))}; }));
+        }
+        ball = {id:"BALL", x:50, y:50};
+        arrows = [];
+        renderAll();
+      }
+
+      // Bindings
+      document.getElementById("presetAtk").addEventListener("click", function(){ applyPreset('atk'); });
+      document.getElementById("presetDef").addEventListener("click", function(){ applyPreset('def'); });
+      document.getElementById("presetCor").addEventListener("click", function(){ applyPreset('cor'); });
+
+      clearArrows.addEventListener("click", function(){
+        if (arrows.length===0) return;
+        if (confirm("Effacer toutes les flèches ?")) { arrows = []; selectedArrowId = null; renderArrows(); save(); }
+      });
+      exportBtn.addEventListener("click", function(){
+        var data=JSON.stringify({mode:modeSelect.value, players:players, ball:ball, arrows:arrows}, null, 2);
+        var a=document.createElement("a"); a.href="data:application/json;charset=utf-8,"+encodeURIComponent(data); a.download="composition-rematch.json"; a.click();
+      });
+      importBtn.addEventListener("click", function(){ importFile.click(); });
+      importFile.addEventListener("change", function(ev){
+        if(ev.target.files && ev.target.files[0]){
+          var reader=new FileReader();
+          reader.onload=function(e){
+            try{
+              var obj=JSON.parse(e.target.result);
+              if(obj && obj.players && obj.players.length){
+                modeSelect.value=obj.mode||modeSelect.value; players=obj.players;
+                ball=obj.ball || {id:"BALL",x:50,y:50};
+                arrows=obj.arrows || [];
+                renderAll(); alert("Composition importée ✔️");
+              }else{ alert("Fichier invalide."); }
+            }catch(err){ alert("Erreur de lecture du JSON."); }
+          };
+          reader.readAsText(ev.target.files[0]);
+        }
+      });
+      exportPng.addEventListener("click", exportPNG);
+      copyShare.addEventListener("click", function(){ var link = makeShareLink(); if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(link).then(function(){ alert("Lien copié ✔️"); }); } else { prompt("Lien de partage :", link); } });
+
+      function renderAll(){ renderActors(); renderArrows(); save(); }
+      modeSelect.addEventListener("change", function(){
+        var need = this.value==="5v5" ? 10 : 6;
+        var blue = players.filter(function(p){return p.team===TEAM_BLUE}).length;
+        var red  = players.filter(function(p){return p.team===TEAM_RED}).length;
+        var limit = (this.value==="5v5")?5:3;
+        if (blue>limit || red>limit || players.length!==need){ players = initialLayout(this.value); }
+        renderAll();
+      });
+      resetBtn.addEventListener("click", function(){
+        players = initialLayout(modeSelect.value);
+        ball = initialBall();
+        arrows = [];
+        renderAll();
+      });
+
+      // Init
+      function init(){
+        load(); renderAll(); resetView();
+      }
+      init();
+    })();
+  </script>
+</body>
+</html>
