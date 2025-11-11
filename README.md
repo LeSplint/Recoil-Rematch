@@ -1,115 +1,66 @@
-# ⚽ Organiseur d’équipe – Rematch
+# Recoil Rematch PRO – Organiseur d’équipe interactif
 
-Un outil **autonome** pour visualiser, organiser et partager les compositions de ton équipe **Rematch**, en **3v3** ou **5v5**.
+## ⚽ Présentation
 
-Créé pour les matchs de **football en jeu vidéo** (Rematch, Rocket League, etc.), cet organiseur offre une vue du terrain du dessus avec des joueurs déplaçables, renommables, et une balle ⚽️ manipulable librement.
+**Recoil Rematch PRO** est un outil web interactif pour organiser les compositions d’équipe sur un **terrain de football** vu du dessus.
 
----
+Il permet de **placer les joueurs, la balle, dessiner des flèches tactiques**, zoomer, partager, importer/exporter des compositions… le tout **sans dépendance externe**.
 
-## 🧭 Fonctionnalités principales
-
-### ⚙️ Gestion d’équipe
-- Choix du **format** : `3v3` ou `5v5`
-- **Joueurs bleus** et **rouges**, déplaçables librement
-- **Renommage** rapide :
-  - Double-clic (PC)
-  - Appui long 600 ms (mobile)
-- Sauvegarde automatique dans le navigateur
-
-### 🪄 Menu contextuel sur chaque joueur
-> (clic droit ou appui long)
-
-- ✏️ **Renommer**
-- ➕ **Dupliquer** (ajoute un joueur du même camp)
-- 🗑️ **Supprimer**
-
-### ⚽ Balle interactive
-- Nouvelle entité indépendante **⚽️**, déplaçable comme un joueur  
-- Position sauvegardée et incluse dans export/import/lien de partage  
-- Idéale pour simuler des actions ou stratégies
-
-### 💾 Sauvegarde et partage
-- **Export JSON** / **Import JSON**
-- **Lien de partage encodé** directement dans l’URL (`#state=...`)
-- Les liens fonctionnent **même hors-ligne**, parfait pour GitHub Pages
-
-### 🎯 Zones et repères
-- Terrain complet vu du dessus
-- Zones repérées : GK, DEF, MID, ATT
-- Bande centrale, but, corners et cercle central visibles
+Accessible ici 👉 **[https://lesplint.github.io/Recoil-Rematch](https://lesplint.github.io/Recoil-Rematch)**
 
 ---
 
-## 🌍 Mise en ligne (GitHub Pages)
+## 🚀 Fonctionnalités principales
 
-### Étape 1 — dépôt GitHub
-Crée un dépôt (ou utilise l’existant) :
-```bash
-git init
-git remote add origin https://github.com/<ton_pseudo>/rematch-organizer.git
-```
-
-### Étape 2 — ajout du fichier
-Ajoute le fichier :
-```
-index.html
-```
-(téléchargé ici : `organiseur-equipe-rematch-TOUT-EN-UN-MENU-BALLE.html`)
-
-Sur GitHub :
-1. Clique **Add file → Upload files**
-2. Glisse ton fichier `index.html`
-3. Clique **Commit changes**
-
-### Étape 3 — activer GitHub Pages
-1. Va dans **Settings → Pages**
-2. Dans **Branch**, choisis `main` (ou `master`) puis `/ (root)`
-3. Clique **Save**
-4. Ton site sera accessible à :
-   ```
-   https://<ton_pseudo>.github.io/rematch-organizer/
-   ```
+- Vue du **terrain complet** (3v3 ou 5v5)
+- **Déplacement libre** des joueurs et de la balle ⚽️
+- **Renommage**, duplication et suppression contextuelle
+- **Flèches tactiques** personnalisables :
+  - couleur, épaisseur, style pointillé, label
+  - **Poignées** ajustables
+  - **Duplication (D)**, **Verrouillage (L)**, **Suppression (Suppr)**
+  - **Numérotation automatique** si label vide
+- **Zoom & déplacement façon Google Maps** :
+  - Molette / pincement mobile / boutons + − ⟲
+- **Presets** : Attaque, Défense, Corner
+- **Export PNG** du terrain avec les pions et flèches
+- **Import / Export JSON** et **lien de partage automatique** via l’URL
+- **Logo Recoil filigrané** intégré au centre du terrain 💚
 
 ---
 
-## 🧩 Export / Import JSON
+## ⌨️ Raccourcis clavier
 
-- **Exporter JSON** → sauvegarde une compo (`composition-rematch.json`)
-- **Importer JSON** → recharge ta disposition
-- Tu peux avoir plusieurs fichiers :
-  - `attaque.json`
-  - `defense.json`
-  - `contre.json`
-
----
-
-## 🔗 Partager une compo
-
-Chaque composition est encodée directement dans l’URL :
-```
-https://<ton_pseudo>.github.io/rematch-organizer/#state=...
-```
-Copie simplement ce lien (bouton **Copier lien de partage**) et envoie-le à ton équipe.  
-En ouvrant le lien, la disposition se charge instantanément.
+| Action | Touche |
+|:--|:--:|
+| Zoom avant / arrière | Z / X |
+| Afficher / cacher la grille | G |
+| Dupliquer la flèche sélectionnée | D |
+| Verrouiller la flèche sélectionnée | L |
+| Supprimer la flèche sélectionnée | Suppr / Delete |
+| Réinitialiser la vue | ⟲ (bouton sur le terrain) |
 
 ---
 
-## 💡 Astuces
-- Double-clic ou clic droit = **actions rapides**  
-- Le menu s’adapte sur mobile (appui long)
-- Le terrain est **responsive** : fonctionne sur PC, tablette, ou smartphone
-- La **balle ⚽️** est enregistrée comme les joueurs dans chaque composition
+## 🧭 Guide rapide
+
+1. **Choisissez le format** : 3v3 ou 5v5  
+2. **Déplacez vos joueurs** (clic-glisser) et **renommez-les** (double-clic)  
+3. **Ajoutez la balle ⚽️** et déplacez-la librement  
+4. **Passez en mode flèche** pour dessiner vos schémas tactiques  
+5. **Utilisez les presets** (Attaque, Défense, Corner) pour gagner du temps  
+6. **Exportez votre composition** en PNG ou JSON, ou copiez le **lien de partage**
 
 ---
 
-## 🧱 Fichiers inclus
-| Nom du fichier | Description |
-|----------------|--------------|
-| `index.html` | Version tout-en-un (joueurs, menu, balle, export/import, partage) |
-| `README.md` | Ce guide explicatif |
-| `composition-rematch.json` *(exemple)* | Fichier de composition exporté (optionnel) |
+## 💡 Pour aller plus loin…
+
+- **Poignées** de flèches plus précises  
+- **Numérotation automatique** pour créer des séquences d’action  
+- **Export PNG haute résolution** (pour posters ou présentations)  
+- **Sauvegarde cloud** ou synchronisation d’équipe en ligne  
+- **Mini-carte** (minimap) optionnelle pour navigation rapide  
 
 ---
 
-🛠️ Créé par **Jim (Rematch)**  
-✨ Avec l’aide de *Alden – GPT-5 Designer*
+*Créé par Recoil Team – Maintenu par LeSplint / Alden*
